@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/Amandeepsinghghai/yugabyte-issue/models"
 	_ "github.com/lib/pq"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 const (
@@ -26,59 +30,58 @@ func main() {
 	var createStmt = `
 		CREATE TABLE IF NOT EXISTS users (
 			id int PRIMARY KEY,
-			name varchar,
-			age int,
-			language varchar
+			last_logged_at timestamp
 		);
 	`
-	log.Printf("test")
+
 	if _, err := db.Exec(createStmt); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("Created table users")
 
 	// Insert into the table.
-	var insertStmt string = "INSERT INTO users(id, name, age, language) VALUES (1, 'John', 35, 'Go') ON CONFLICT DO NOTHING"
+	var insertStmt string = "INSERT INTO users(id, last_logged_at) VALUES (1, NOW()) ON CONFLICT DO NOTHING"
 	if _, err := db.Exec(insertStmt); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("Inserted data: %s\n", insertStmt)
 
-	// Read from the table.
-	var name string
-	var age int
-	var language string
+	plainSQL := func() {
+		for i := 0; i < 50; i++ {
+			time.Sleep(25 * time.Millisecond)
+			_, err = db.Exec("UPDATE users SET last_logged_at = NOW() WHERE id = 1")
+			if err != nil {
+				log.Fatal(err)
+			}
 
-	rows, err := db.Query(`SELECT name, age, language FROM users WHERE id = 1`)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-
-	fmt.Printf("Query for id=1 returned: ")
-	for rows.Next() {
-		err := rows.Scan(&name, &age, &language)
-		if err != nil {
-			log.Fatal(err)
+			fmt.Printf("Update loop count: %d\n", i)
 		}
-		fmt.Printf("Row[%s, %d, %s]\n", name, age, language)
-	}
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
 	}
 
-	_, err = db.Exec(`UPDATE users SET name = 'doe' WHERE id = 1`)
-	if err != nil {
-		log.Fatal(err)
+	ctx := context.Background()
+
+	// SQLBoiler
+	sqlBoiler := func() {
+		for i := 0; i < 50; i++ {
+			time.Sleep(50 * time.Millisecond)
+			user, err := models.FindUser(ctx, db, 1)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			_, err = user.Update(ctx, db, boil.Whitelist("last_logged_at"))
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			fmt.Printf("Update loop count sqlboiler: %d\n", i)
+		}
 	}
 
-	// count, err := res.RowsAffected()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// fmt.Printf("Updated Row Count: %d\n", count)
+	go plainSQL()
+	go sqlBoiler()
+	time.Sleep(10000 * time.Millisecond)
+	fmt.Println("Printing from main")
 
 	defer db.Close()
 }
