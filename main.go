@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	host     = "127.0.0.1"
+	host     = "localhost"
 	port     = 5433
 	user     = "yugabyte"
 	password = "yugabyte"
@@ -29,8 +29,9 @@ func main() {
 			name varchar,
 			age int,
 			language varchar
-		)
+		);
 	`
+	log.Printf("test")
 	if _, err := db.Exec(createStmt); err != nil {
 		log.Fatal(err)
 	}
@@ -67,17 +68,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	res, err := db.Exec(`UPDATE employee SET name = 'doe' WHERE id = 1`)
+	_, err = db.Exec(`UPDATE users SET name = 'doe' WHERE id = 1`)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	count, err := res.RowsAffected()
-	if err != nil {
-		log.Fatal(err)
-	}
+	// count, err := res.RowsAffected()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	fmt.Printf("Updated Row Count: %d\n", count)
+	// fmt.Printf("Updated Row Count: %d\n", count)
 
 	defer db.Close()
 }
