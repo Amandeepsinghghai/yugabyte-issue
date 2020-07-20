@@ -1,15 +1,12 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"time"
 
-	"github.com/Amandeepsinghghai/yugabyte-issue/models"
 	_ "github.com/lib/pq"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 const (
@@ -46,41 +43,26 @@ func main() {
 	}
 	fmt.Printf("Inserted data: %s\n", insertStmt)
 
-	plainSQL := func() {
+	plainSQL := func(t time.Duration) {
 		for i := 0; i < 50; i++ {
-			time.Sleep(25 * time.Millisecond)
+			time.Sleep(t)
+			_, err = db.Query("Select * FROM users where id = 1")
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			_, err = db.Exec("UPDATE users SET last_logged_at = NOW() WHERE id = 1")
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			fmt.Printf("Update loop count: %d\n", i)
+			fmt.Printf("Loop count: %d\n", i)
 		}
 	}
 
-	ctx := context.Background()
-
-	// SQLBoiler
-	sqlBoiler := func() {
-		for i := 0; i < 50; i++ {
-			time.Sleep(50 * time.Millisecond)
-			user, err := models.FindUser(ctx, db, 1)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			_, err = user.Update(ctx, db, boil.Whitelist("last_logged_at"))
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			fmt.Printf("Update loop count sqlboiler: %d\n", i)
-		}
-	}
-
-	go plainSQL()
-	go sqlBoiler()
-	time.Sleep(10000 * time.Millisecond)
+	go plainSQL(50 * time.Millisecond)
+	go plainSQL(50 * time.Millisecond)
+	time.Sleep(5000 * time.Millisecond)
 	fmt.Println("Printing from main")
 
 	defer db.Close()
