@@ -44,7 +44,7 @@ func main() {
 	fmt.Printf("Inserted data: %s\n", insertStmt)
 
 	plainSQL := func(t time.Duration) {
-		for i := 0; i < 50; i++ {
+		for i := 0; i < 5; i++ {
 			time.Sleep(t)
 			_, err = db.Query("Select * FROM users where id = 1")
 			if err != nil {
@@ -60,9 +60,9 @@ func main() {
 		}
 	}
 
-	go plainSQL(50 * time.Millisecond)
-	go plainSQL(50 * time.Millisecond)
-	time.Sleep(5000 * time.Millisecond)
+	go plainSQL(10 * time.Millisecond)
+	go plainSQL(200 * time.Millisecond)
+	time.Sleep(10000 * time.Millisecond)
 	fmt.Println("Printing from main")
 
 	defer db.Close()
